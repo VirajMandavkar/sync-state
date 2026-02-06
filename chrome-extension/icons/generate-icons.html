@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate SyncState Extension Icons</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+    h1 {
+      text-align: center;
+      color: #667eea;
+    }
+    .icon-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+      margin: 40px 0;
+    }
+    .icon-item {
+      text-align: center;
+    }
+    .icon-canvas {
+      border: 1px solid #ddd;
+      background: white;
+      margin: 10px 0;
+      display: inline-block;
+    }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #5568d3;
+    }
+    .instructions {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 20px;
+      color: #0c5460;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔗 SyncState Icon Generator</h1>
+
+  <div class="instructions">
+    <strong>Instructions:</strong>
+    <ol>
+      <li>Click "Download" buttons below to save each icon</li>
+      <li>Save files as PNG in this <code>icons/</code> folder</li>
+      <li>File names must match: <code>icon-16.png</code>, <code>icon-48.png</code>, <code>icon-128.png</code></li>
+      <li>For a production extension, commission a designer to create polished icons</li>
+    </ol>
+  </div>
+
+  <div class="icon-container">
+    <div class="icon-item">
+      <h3>Icon 16x16</h3>
+      <canvas id="canvas-16" class="icon-canvas" width="16" height="16"></canvas>
+      <button onclick="downloadIcon('canvas-16', 'icon-16.png')">Download 16x16</button>
+    </div>
+
+    <div class="icon-item">
+      <h3>Icon 48x48</h3>
+      <canvas id="canvas-48" class="icon-canvas" width="48" height="48"></canvas>
+      <button onclick="downloadIcon('canvas-48', 'icon-48.png')">Download 48x48</button>
+    </div>
+
+    <div class="icon-item">
+      <h3>Icon 128x128</h3>
+      <canvas id="canvas-128" class="icon-canvas" width="128" height="128"></canvas>
+      <button onclick="downloadIcon('canvas-128', 'icon-128.png')">Download 128x128</button>
+    </div>
+  </div>
+
+  <script>
+    function drawIcon(canvasId) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const size = canvas.width;
+
+      // Clear canvas
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+
+      // Draw gradient background
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#667eea');
+      gradient.addColorStop(1, '#764ba2');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+
+      // Draw chain link icon (🔗)
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1, size / 16);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      const scale = size / 128;
+
+      // Left link
+      ctx.beginPath();
+      ctx.arc(32 * scale, 64 * scale, 16 * scale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillRect(32 * scale - 4 * scale, 48 * scale, 8 * scale, 32 * scale);
+
+      // Right link
+      ctx.beginPath();
+      ctx.arc(96 * scale, 64 * scale, 16 * scale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillRect(96 * scale - 4 * scale, 48 * scale, 8 * scale, 32 * scale);
+
+      // Connecting bridge
+      ctx.fillRect(48 * scale, 60 * scale, 32 * scale, 8 * scale);
+    }
+
+    // Draw all icons
+    drawIcon('canvas-16');
+    drawIcon('canvas-48');
+    drawIcon('canvas-128');
+
+    function downloadIcon(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    }
+  </script>
+</body>
+</html>
