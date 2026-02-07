@@ -62,7 +62,37 @@ curl -X POST http://localhost:3000/webhook/shopify \
 - **`index.ts`** – Express webhook listener + Buffer logic
 - **`.env`** – Credentials (AWS keys, SP-API Client ID/Secret/Refresh Token)
 
-## Credentials (in `.env`)
+## Deployment
+
+### Render Free Tier (Recommended)
+
+Deploy to Render.com in minutes:
+
+1. **Quick Start**
+   - Push code to GitHub
+   - Create a new Web Service on Render
+   - Connect your GitHub repo
+   - Add environment variables from `.env.example`
+   - Deploy!
+
+2. **Documentation**
+   - Full guide: [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md)
+   - Pre-deployment checklist: [RENDER_CHECKLIST.md](RENDER_CHECKLIST.md)
+
+3. **Environment Variables Required**
+   ```
+   SP_API_CLIENT_ID
+   SP_API_CLIENT_SECRET
+   SP_API_REFRESH_TOKEN
+   AMAZON_REGION
+   ```
+
+### AWS Deployment
+
+For production workloads:
+- See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for ECS or Lambda options
+- Requires AWS account setup with proper IAM roles
+
 
 ```
 AWS_ACCESS_KEY_ID=...

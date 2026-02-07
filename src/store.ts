@@ -115,7 +115,7 @@ export async function saveAlerts(alerts: unknown[]) {
   // This function is kept for compatibility but is a no-op
 }
 
-export async function getAlerts() {
+export async function getAlerts(): Promise<any[]> {
   return await ddb.getAllAlerts();
 }
 
@@ -139,7 +139,7 @@ export async function getInventoryStatus(sku: string) {
   };
 }
 
-export async function getAllInventory() {
+export async function getAllInventory(): Promise<Record<string, any>> {
   return await ddb.getAllInventory();
 }
 

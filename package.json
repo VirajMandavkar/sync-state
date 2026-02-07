@@ -2,9 +2,13 @@
   "name": "syncstate-prototype",
   "version": "0.1.0",
   "description": "Prototype for SyncState: fast Shopify->Amazon inventory sync (Phase 1)",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "engines": {
+    "node": "18.x || 20.x"
+  },
   "scripts": {
     "start": "ts-node src/index.ts",
+    "start:prod": "node dist/index.js",
     "build": "tsc",
     "test": "ts-node tests/integration.ts",
     "test:phase2": "ts-node tests/phase2.ts",
