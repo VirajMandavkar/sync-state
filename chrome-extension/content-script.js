@@ -3,45 +3,76 @@
 
 // Extract SKU from Shopify product page
 function extractSKU() {
-  // Target: product variants section
-  // Shopify stores SKU in data attributes or visible text in admin interface
+  // Target: try several robust ways to find the SKU input/value
 
-  // Method 1: Look for SKU in the variants table (most reliable)
-  const skuElements = document.querySelectorAll(
-    '[data-testid*="variant"], [class*="variant"]'
-  );
+  // Method 1: Directly target inputs that likely contain SKU
+  // Use case-insensitive attribute selectors (the "i" flag) where supported
+  const skuInputSelectors = [
+    'input[name*="sku" i]',
+    'input[id*="sku" i]',
+    'input[class*="sku" i]',
+    'input[data-*="sku" i]'
+  ];
 
-  for (const el of skuElements) {
-    const text = el.innerText || el.textContent;
-    if (text && text.includes('SKU://')) {
-      // Format: "SKU:// AB123CD"
-      const match = text.match(/SKU:\/\/\s*([A-Za-z0-9\-_.]+)/);
-      if (match) return match[1];
+  for (const sel of skuInputSelectors) {
+    try {
+      const inputs = document.querySelectorAll(sel);
+      for (const input of inputs) {
+        if (!input) continue;
+        const val = (input.value || '').trim();
+        if (val && !/resize/i.test(val)) {
+          return val;
+        }
+      }
+    } catch (e) {
+      // Some browsers may not accept the data-* selector pattern; ignore errors
     }
   }
 
-  // Method 2: Look in product details section
+  // Also look specifically for the known ID used in the page you pasted
+  const byId = document.getElementById('InventoryCardSku');
+  if (byId && (byId.value || '').trim()) {
+    return byId.value.trim();
+  }
+
+  // Method 2: Look for label text containing "SKU" and find nearby inputs
   const labels = document.querySelectorAll('label, span, div');
   for (const label of labels) {
-    if (
-      label.textContent.toLowerCase().includes('sku') &&
-      label.nextElementSibling
-    ) {
-      const skuValue = label.nextElementSibling.textContent.trim();
-      if (skuValue && !skuValue.includes('SKU')) {
-        return skuValue;
+    const txt = (label.textContent || '').toLowerCase();
+    if (txt.includes('sku') && !txt.includes('resize')) {
+      // try: input inside label
+      const innerInput = label.querySelector('input');
+      if (innerInput && (innerInput.value || '').trim()) return innerInput.value.trim();
+
+      // try: sibling input
+      let sibling = label.nextElementSibling;
+      while (sibling) {
+        if (sibling.tagName === 'INPUT' && (sibling.value || '').trim()) return sibling.value.trim();
+        // sometimes the input is deeper inside
+        const nested = sibling.querySelector && sibling.querySelector('input');
+        if (nested && (nested.value || '').trim()) return nested.value.trim();
+        sibling = sibling.nextElementSibling;
       }
     }
   }
 
-  // Method 3: Parse from URL if it contains product info
-  const url = new URL(window.location);
-  const pathParts = url.pathname.split('/');
-  if (pathParts.includes('products')) {
-    const productId = pathParts[pathParts.indexOf('products') + 1];
-    if (productId) {
-      return `PRODUCT-${productId}`;
+  // Method 3: Look for data attributes or text nodes that may contain SKU
+  const dataSku = document.querySelector('[data-sku], [data-sku-value]');
+  if (dataSku) {
+    const v = (dataSku.getAttribute('data-sku') || dataSku.getAttribute('data-sku-value') || '').trim();
+    if (v) return v;
+  }
+
+  // Method 4: Parse from URL if it contains product info
+  try {
+    const url = new URL(window.location);
+    const pathParts = url.pathname.split('/');
+    if (pathParts.includes('products')) {
+      const productId = pathParts[pathParts.indexOf('products') + 1];
+      if (productId) return `PRODUCT-${productId}`;
     }
+  } catch (e) {
+    // ignore malformed URL
   }
 
   return null;

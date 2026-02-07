@@ -2,7 +2,7 @@
 // Handles: API communication, storage, message routing, alarms
 
 // Base configuration
-const API_BASE = 'https://api.syncstate.local';
+const API_BASE = 'http://localhost:3000';
 const API_TIMEOUT = 10000; // 10 seconds
 
 // Helper: Make API calls with timeout
@@ -235,3 +235,7 @@ updateBadge();
 
 // Log service worker ready
 console.log('SyncState service worker ready');
+
+// ...existing code...
+
+

@@ -15,6 +15,19 @@ import * as validation from "./validation";
 const app = express();
 app.use(bodyParser.json());
 
+// CORS middleware for Chrome extension requests
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
 // Initialize DynamoDB on startup (non-blocking)
 let initialized = false;
 
@@ -322,6 +335,48 @@ app.get("/api/inventory", async (req, res) => {
   } catch (error) {
     console.error("All inventory fetch error:", error);
     return res.status(500).json({ error: "All inventory fetch failed" });
+  }
+});
+
+// Get product sync status (for Chrome extension)
+app.get("/api/product-sync/:productId", async (req, res) => {
+  try {
+    const { productId } = req.params;
+    // Return basic sync status - can be expanded later
+    return res.json({
+      productId,
+      lastSync: null,
+      synced: false,
+      inventoryLevel: 0,
+      errors: []
+    });
+  } catch (error) {
+    console.error("Product sync status fetch error:", error);
+    return res.status(500).json({ error: "Product sync status fetch failed" });
+  }
+});
+
+// Handle SKU-to-ASIN mapping from Chrome extension
+app.post("/api/sku-mapping", async (req, res) => {
+  try {
+    const { sku, asin, source, timestamp } = req.body;
+    
+    if (!sku || !asin) {
+      return res.status(400).json({ error: "SKU and ASIN required" });
+    }
+    
+    console.log(`[MAPPING] ${source} mapped SKU ${sku} to ASIN ${asin} at ${timestamp}`);
+    
+    // Return success response
+    return res.json({
+      success: true,
+      sku,
+      asin,
+      mappedAt: timestamp
+    });
+  } catch (error) {
+    console.error("SKU mapping error:", error);
+    return res.status(500).json({ error: "SKU mapping failed" });
   }
 });
 
