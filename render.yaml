@@ -3,7 +3,5 @@ services:
     name: syncstate-api
     env: node
     plan: free
-    root: .
-    buildCommand: npm install && npm run build
-    startCommand: node dist/index.js
-    # Explicitly runs compiled JavaScript from dist/ folder
+    buildCommand: npm ci && npm run build
+    startCommand: node ./dist/index.js
