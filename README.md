@@ -82,3 +82,4 @@ AMAZON_MARKETPLACE_ID=ATVPDKIKX0DER
 - [ ] Phase 3: DynamoDB for persistent SKU↔ASIN mapping
 - [ ] Phase 4: Chrome extension for product mapping UI
 - [ ] Add proper error handling + retry logic for failed Amazon updates
+# sync-state
