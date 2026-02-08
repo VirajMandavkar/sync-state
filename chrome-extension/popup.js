@@ -247,7 +247,7 @@ linkBtn.addEventListener('click', async () => {
     });
 
     // Send to SyncState backend
-    const response = await fetch('https://syncstate-api.onrender.com/api/sku-mapping', {
+    const response = await fetch('https://sync-state-backend.onrender.com/api/sku-mapping', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
