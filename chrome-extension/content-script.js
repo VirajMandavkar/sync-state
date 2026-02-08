@@ -1,5 +1,16 @@
+// ================== GLOBAL GUARD ==================
+// Prevent double-injection on Shopify SPA navigation
+if (window.__SYNCSTATE_CONTENT_SCRIPT_LOADED__) {
+  console.log("SyncState: content script already loaded, skipping re-init");
+  return;
+}
+window.__SYNCSTATE_CONTENT_SCRIPT_LOADED__ = true;
+
+// =================================================
 // Content script injected into Shopify product pages
 // Extracts SKU and facilitates SKU-to-ASIN linking
+// =================================================
+
 
 // ---------- SKU VALIDATION ----------
 function looksLikeSKU(val) {
@@ -7,11 +18,12 @@ function looksLikeSKU(val) {
     typeof val === "string" &&
     val.length > 0 &&
     val.length <= 40 &&
-    /[0-9]/.test(val) &&        // must contain at least one number
-    !/\s{2,}/.test(val) &&     // no long whitespace
+    /[0-9]/.test(val) &&           // must contain a number
+    !/\s{2,}/.test(val) &&        // no long whitespace
     !val.toLowerCase().includes("resize")
   );
 }
+
 
 // ---------- SKU EXTRACTION ----------
 function extractSKU() {
@@ -26,9 +38,7 @@ function extractSKU() {
     const inputs = document.querySelectorAll(sel);
     for (const input of inputs) {
       const val = (input.value || "").trim();
-      if (looksLikeSKU(val)) {
-        return val;
-      }
+      if (looksLikeSKU(val)) return val;
     }
   }
 
@@ -39,30 +49,32 @@ function extractSKU() {
     if (looksLikeSKU(val)) return val;
   }
 
-  // Method 3: labels mentioning SKU
+  // Method 3: label-based search
   const labels = document.querySelectorAll("label, span, div");
   for (const label of labels) {
     const txt = (label.textContent || "").toLowerCase();
-    if (txt.includes("sku")) {
-      const innerInput = label.querySelector("input");
-      if (innerInput) {
-        const val = (innerInput.value || "").trim();
+    if (!txt.includes("sku")) continue;
+
+    const innerInput = label.querySelector("input");
+    if (innerInput) {
+      const val = (innerInput.value || "").trim();
+      if (looksLikeSKU(val)) return val;
+    }
+
+    let sibling = label.nextElementSibling;
+    while (sibling) {
+      if (sibling.tagName === "INPUT") {
+        const val = (sibling.value || "").trim();
         if (looksLikeSKU(val)) return val;
       }
 
-      let sibling = label.nextElementSibling;
-      while (sibling) {
-        if (sibling.tagName === "INPUT") {
-          const val = (sibling.value || "").trim();
-          if (looksLikeSKU(val)) return val;
-        }
-        const nested = sibling.querySelector?.("input");
-        if (nested) {
-          const val = (nested.value || "").trim();
-          if (looksLikeSKU(val)) return val;
-        }
-        sibling = sibling.nextElementSibling;
+      const nested = sibling.querySelector?.("input");
+      if (nested) {
+        const val = (nested.value || "").trim();
+        if (looksLikeSKU(val)) return val;
       }
+
+      sibling = sibling.nextElementSibling;
     }
   }
 
@@ -70,6 +82,7 @@ function extractSKU() {
   const dataSkuEl = document.querySelector(
     "[data-sku], [data-sku-value], [data-testid*='sku' i]"
   );
+
   if (dataSkuEl) {
     const val = (
       dataSkuEl.getAttribute("data-sku") ||
@@ -77,12 +90,14 @@ function extractSKU() {
       dataSkuEl.textContent ||
       ""
     ).trim();
+
     if (looksLikeSKU(val)) return val;
   }
 
-  // ❌ NO URL FALLBACK — better null than wrong SKU
+  // ❌ Never invent SKUs
   return null;
 }
+
 
 // ---------- UI INJECTION ----------
 function injectSyncStateButton() {
@@ -92,14 +107,12 @@ function injectSyncStateButton() {
     '[class*="Button"], [class*="action"]'
   );
 
-  if (!actionContainer) {
-    console.log("SyncState: action container not found");
-    return;
-  }
+  if (!actionContainer) return;
 
   const button = document.createElement("button");
   button.id = "syncstate-inject-button";
   button.textContent = "🔗 Link to SyncState";
+
   button.style.cssText = `
     padding: 10px 16px;
     margin: 10px;
@@ -110,17 +123,17 @@ function injectSyncStateButton() {
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 2px 8px rgba(102,126,234,0.3);
   `;
 
-  button.addEventListener("mouseover", () => {
+  button.addEventListener("mouseenter", () => {
     button.style.transform = "translateY(-2px)";
-    button.style.boxShadow = "0 4px 12px rgba(102, 126, 234, 0.4)";
+    button.style.boxShadow = "0 4px 12px rgba(102,126,234,0.4)";
   });
 
-  button.addEventListener("mouseout", () => {
+  button.addEventListener("mouseleave", () => {
     button.style.transform = "translateY(0)";
-    button.style.boxShadow = "0 2px 8px rgba(102, 126, 234, 0.3)";
+    button.style.boxShadow = "0 2px 8px rgba(102,126,234,0.3)";
   });
 
   button.addEventListener("click", () => {
@@ -129,6 +142,7 @@ function injectSyncStateButton() {
 
   (actionContainer.parentElement || document.body).appendChild(button);
 }
+
 
 // ---------- MESSAGE HANDLING ----------
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -144,29 +158,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+
 // ---------- AUTO INJECT ----------
+setTimeout(injectSyncStateButton, 500);
+
 window.addEventListener("load", () => {
   setTimeout(injectSyncStateButton, 1000);
 });
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(injectSyncStateButton, 500);
+
+// ---------- MUTATION OBSERVER ----------
+let observer;
+
+if (!observer) {
+  observer = new MutationObserver(() => {
+    if (!document.getElementById("syncstate-inject-button")) {
+      injectSyncStateButton();
+    }
   });
-} else {
-  setTimeout(injectSyncStateButton, 500);
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
 }
 
-// ---------- OBSERVER ----------
-const observer = new MutationObserver(() => {
-  if (!document.getElementById("syncstate-inject-button")) {
-    injectSyncStateButton();
-  }
-});
 
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
-});
-
+// ---------- DEBUG ----------
 console.log("SyncState content script loaded on", window.location.href);
