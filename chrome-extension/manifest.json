@@ -13,8 +13,7 @@
     "https://*.myshopify.com/admin/products/*",
     "https://*.myshopify.com/admin/products*",
     "https://admin.shopify.com/store/*/products/*",
-    "https://api.syncstate.local/*",
-    "http://localhost:3000/*"
+    "https://syncstate-api.onrender.com/*"
   ],
   "background": {
     "service_worker": "background.js"

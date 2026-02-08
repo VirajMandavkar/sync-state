@@ -2,7 +2,7 @@
 // Handles: API communication, storage, message routing, alarms
 
 // Base configuration
-const API_BASE = 'http://localhost:3000';
+const API_BASE = 'https://syncstate-api.onrender.com';
 const API_TIMEOUT = 10000; // 10 seconds
 
 // Helper: Make API calls with timeout
