@@ -1,167 +1,165 @@
 // Content script injected into Shopify product pages
 // Extracts SKU and facilitates SKU-to-ASIN linking
 
-// Extract SKU from Shopify product page
-function extractSKU() {
-  // Target: try several robust ways to find the SKU input/value
+// ---------- SKU VALIDATION ----------
+function looksLikeSKU(val) {
+  return (
+    typeof val === "string" &&
+    val.length > 0 &&
+    val.length <= 40 &&
+    /[0-9]/.test(val) &&        // must contain at least one number
+    !/\s{2,}/.test(val) &&     // no long whitespace
+    !val.toLowerCase().includes("resize")
+  );
+}
 
-  // Method 1: Directly target inputs that likely contain SKU
-  // Use case-insensitive attribute selectors (the "i" flag) where supported
+// ---------- SKU EXTRACTION ----------
+function extractSKU() {
+  // Method 1: inputs likely to contain SKU
   const skuInputSelectors = [
     'input[name*="sku" i]',
     'input[id*="sku" i]',
-    'input[class*="sku" i]',
-    'input[data-*="sku" i]'
+    'input[class*="sku" i]'
   ];
 
   for (const sel of skuInputSelectors) {
-    try {
-      const inputs = document.querySelectorAll(sel);
-      for (const input of inputs) {
-        if (!input) continue;
-        const val = (input.value || '').trim();
-        if (val && !/resize/i.test(val)) {
-          return val;
-        }
+    const inputs = document.querySelectorAll(sel);
+    for (const input of inputs) {
+      const val = (input.value || "").trim();
+      if (looksLikeSKU(val)) {
+        return val;
       }
-    } catch (e) {
-      // Some browsers may not accept the data-* selector pattern; ignore errors
     }
   }
 
-  // Also look specifically for the known ID used in the page you pasted
-  const byId = document.getElementById('InventoryCardSku');
-  if (byId && (byId.value || '').trim()) {
-    return byId.value.trim();
+  // Method 2: known Shopify ID
+  const byId = document.getElementById("InventoryCardSku");
+  if (byId) {
+    const val = (byId.value || byId.textContent || "").trim();
+    if (looksLikeSKU(val)) return val;
   }
 
-  // Method 2: Look for label text containing "SKU" and find nearby inputs
-  const labels = document.querySelectorAll('label, span, div');
+  // Method 3: labels mentioning SKU
+  const labels = document.querySelectorAll("label, span, div");
   for (const label of labels) {
-    const txt = (label.textContent || '').toLowerCase();
-    if (txt.includes('sku') && !txt.includes('resize')) {
-      // try: input inside label
-      const innerInput = label.querySelector('input');
-      if (innerInput && (innerInput.value || '').trim()) return innerInput.value.trim();
+    const txt = (label.textContent || "").toLowerCase();
+    if (txt.includes("sku")) {
+      const innerInput = label.querySelector("input");
+      if (innerInput) {
+        const val = (innerInput.value || "").trim();
+        if (looksLikeSKU(val)) return val;
+      }
 
-      // try: sibling input
       let sibling = label.nextElementSibling;
       while (sibling) {
-        if (sibling.tagName === 'INPUT' && (sibling.value || '').trim()) return sibling.value.trim();
-        // sometimes the input is deeper inside
-        const nested = sibling.querySelector && sibling.querySelector('input');
-        if (nested && (nested.value || '').trim()) return nested.value.trim();
+        if (sibling.tagName === "INPUT") {
+          const val = (sibling.value || "").trim();
+          if (looksLikeSKU(val)) return val;
+        }
+        const nested = sibling.querySelector?.("input");
+        if (nested) {
+          const val = (nested.value || "").trim();
+          if (looksLikeSKU(val)) return val;
+        }
         sibling = sibling.nextElementSibling;
       }
     }
   }
 
-  // Method 3: Look for data attributes or text nodes that may contain SKU
-  const dataSku = document.querySelector('[data-sku], [data-sku-value]');
-  if (dataSku) {
-    const v = (dataSku.getAttribute('data-sku') || dataSku.getAttribute('data-sku-value') || '').trim();
-    if (v) return v;
+  // Method 4: data attributes
+  const dataSkuEl = document.querySelector(
+    "[data-sku], [data-sku-value], [data-testid*='sku' i]"
+  );
+  if (dataSkuEl) {
+    const val = (
+      dataSkuEl.getAttribute("data-sku") ||
+      dataSkuEl.getAttribute("data-sku-value") ||
+      dataSkuEl.textContent ||
+      ""
+    ).trim();
+    if (looksLikeSKU(val)) return val;
   }
 
-  // Method 4: Parse from URL if it contains product info
-  try {
-    const url = new URL(window.location);
-    const pathParts = url.pathname.split('/');
-    if (pathParts.includes('products')) {
-      const productId = pathParts[pathParts.indexOf('products') + 1];
-      if (productId) return `PRODUCT-${productId}`;
-    }
-  } catch (e) {
-    // ignore malformed URL
-  }
-
+  // ❌ NO URL FALLBACK — better null than wrong SKU
   return null;
 }
 
-// Inject UI button on product page
+// ---------- UI INJECTION ----------
 function injectSyncStateButton() {
-  // Check if button already injected
-  if (document.getElementById('syncstate-inject-button')) {
-    return;
-  }
+  if (document.getElementById("syncstate-inject-button")) return;
 
-  // Find a good place to inject (look for product action buttons)
   const actionContainer = document.querySelector(
     '[class*="Button"], [class*="action"]'
   );
 
   if (!actionContainer) {
-    console.log('SyncState: Could not find action container');
+    console.log("SyncState: action container not found");
     return;
   }
 
-  // Create button
-  const button = document.createElement('button');
-  button.id = 'syncstate-inject-button';
-  button.textContent = '🔗 Link to SyncState';
+  const button = document.createElement("button");
+  button.id = "syncstate-inject-button";
+  button.textContent = "🔗 Link to SyncState";
   button.style.cssText = `
     padding: 10px 16px;
     margin: 10px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    font-weight: 500;
     font-size: 14px;
+    font-weight: 500;
     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-    transition: all 0.2s;
   `;
 
-  button.addEventListener('mouseover', () => {
-    button.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
-    button.style.transform = 'translateY(-2px)';
+  button.addEventListener("mouseover", () => {
+    button.style.transform = "translateY(-2px)";
+    button.style.boxShadow = "0 4px 12px rgba(102, 126, 234, 0.4)";
   });
 
-  button.addEventListener('mouseout', () => {
-    button.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)';
-    button.style.transform = 'translateY(0)';
+  button.addEventListener("mouseout", () => {
+    button.style.transform = "translateY(0)";
+    button.style.boxShadow = "0 2px 8px rgba(102, 126, 234, 0.3)";
   });
 
-  button.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'openPopup' });
+  button.addEventListener("click", () => {
+    chrome.runtime.sendMessage({ action: "openPopup" });
   });
 
-  // Try to insert in relevant location
-  const insertionPoint =
-    actionContainer.parentElement || document.body;
-  insertionPoint.appendChild(button);
+  (actionContainer.parentElement || document.body).appendChild(button);
 }
 
-// Listen for messages from popup
+// ---------- MESSAGE HANDLING ----------
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'getSKU') {
+  if (request.action === "getSKU") {
     const sku = extractSKU();
-    sendResponse({ sku: sku });
-  } else if (request.action === 'injectButton') {
+    console.log("SyncState: extracted SKU =", sku);
+    sendResponse({ sku });
+  }
+
+  if (request.action === "injectButton") {
     injectSyncStateButton();
     sendResponse({ success: true });
   }
 });
 
-// Auto-inject on page load
-window.addEventListener('load', () => {
-  // Small delay to allow page to fully render
+// ---------- AUTO INJECT ----------
+window.addEventListener("load", () => {
   setTimeout(injectSyncStateButton, 1000);
 });
 
-// Also try on DOM ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
     setTimeout(injectSyncStateButton, 500);
   });
 } else {
   setTimeout(injectSyncStateButton, 500);
 }
 
-// Mutation observer to detect dynamically loaded content
+// ---------- OBSERVER ----------
 const observer = new MutationObserver(() => {
-  if (!document.getElementById('syncstate-inject-button')) {
+  if (!document.getElementById("syncstate-inject-button")) {
     injectSyncStateButton();
   }
 });
@@ -171,5 +169,4 @@ observer.observe(document.body, {
   subtree: true,
 });
 
-// Log that content script loaded
-console.log('SyncState content script loaded on', window.location.href);
+console.log("SyncState content script loaded on", window.location.href);
