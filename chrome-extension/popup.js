@@ -256,8 +256,9 @@ linkBtn.addEventListener('click', async () => {
     if (response && !response.error) {
       showStatus('✓ SKU linked successfully!', 'success');
       setLoading(false);
-      // Close popup after success
-      setTimeout(() => window.close(), 1500);
+      // Clear ASIN input for next entry
+      asinInput.value = '';
+      asinInput.focus();
     } else {
       const errMsg = response?.error || 'Failed to save mapping';
       showStatus(`Error: ${errMsg}`, 'error');
@@ -268,7 +269,8 @@ linkBtn.addEventListener('click', async () => {
     // Even if background message fails, it's saved locally. Background will retry periodically.
     showStatus('✓ Saved locally - will sync when online', 'success');
     setLoading(false);
-    setTimeout(() => window.close(), 1500);
+    asinInput.value = '';
+    asinInput.focus();
   }
 });
 
