@@ -246,35 +246,29 @@ linkBtn.addEventListener('click', async () => {
       [`sku_${sku}_timestamp`]: new Date().toISOString(),
     });
 
-    // Send to SyncState backend
-    const response = await fetch('https://sync-state-backend.onrender.com/api/sku-mapping', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        sku: sku,
-        asin: asin,
-        source: 'chrome-extension',
-        timestamp: new Date().toISOString(),
-      }),
+    // Delegate sync to background worker (which has retry logic and offline support)
+    const response = await chrome.runtime.sendMessage({
+      action: 'syncMapping',
+      sku: sku,
+      asin: asin,
     });
 
-    if (response.ok) {
+    if (response && !response.error) {
       showStatus('✓ SKU linked successfully!', 'success');
       setLoading(false);
-      // Optional: Close popup after success
+      // Close popup after success
       setTimeout(() => window.close(), 1500);
     } else {
-      const errorData = await response.json();
-      showStatus(`Error: ${errorData.message || 'Failed to save mapping'}`, 'error');
+      const errMsg = response?.error || 'Failed to save mapping';
+      showStatus(`Error: ${errMsg}`, 'error');
       setLoading(false);
     }
   } catch (error) {
-    console.error('Error sending to backend:', error);
-    const errMsg = error && error.message ? error.message : 'Network or CORS error';
-    showStatus(`Saved locally (backend unreachable). ${errMsg}`, 'error');
+    console.error('Error messaging background worker:', error);
+    // Even if background message fails, it's saved locally. Background will retry periodically.
+    showStatus('✓ Saved locally - will sync when online', 'success');
     setLoading(false);
+    setTimeout(() => window.close(), 1500);
   }
 });
 
