@@ -2,7 +2,7 @@
 // Handles: API communication, storage, message routing, alarms
 
 // Base configuration
-const API_BASE = 'https://syncstate-api.onrender.com';
+const API_BASE = 'https://sync-state-backend.onrender.com';
 const API_TIMEOUT = 10000; // 10 seconds
 
 // Helper: Make API calls with timeout
@@ -23,7 +23,13 @@ async function makeApiCall(endpoint, method = 'GET', body = null) {
     const response = await fetch(`${API_BASE}${endpoint}`, init);
 
     if (!response.ok) {
-      const errorData = await response.json();
+      // Try to parse error as JSON, fall back to text
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        errorData = { message: await response.text() || `HTTP ${response.status}` };
+      }
       throw new Error(
         errorData.message || `HTTP ${response.status}`
       );
